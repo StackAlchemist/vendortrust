@@ -46,3 +46,32 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export async function getSearchHistory(req, res) {
+  try {
+    const userId = req.user.id; // from auth middleware
+
+    const user = await User.findById(userId)
+      .select("previousSearches")
+      .populate("previousSearches.vendor", "name instagramHandle");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Sort newest first
+    const history = user.previousSearches
+      .sort(
+        (a, b) =>
+          new Date(b.searchedAt) - new Date(a.searchedAt)
+      );
+
+    res.json({
+      count: history.length,
+      history
+    });
+  } catch (err) {
+    console.error("Get history error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}

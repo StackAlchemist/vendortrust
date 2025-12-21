@@ -70,8 +70,8 @@ export async function checkVendor(req, res) {
     }
 
     /* 5️⃣ Save to user's history (if logged in) */
-    if (userId) {
-      await User.findByIdAndUpdate(userId, {
+    if (req.user) {
+      await User.findByIdAndUpdate(req.user._id, {
         $push: {
           previousSearches: {
             vendor: vendor._id,
@@ -86,7 +86,7 @@ export async function checkVendor(req, res) {
             }
           }
         }
-      });
+      }, { new: true });
     }
 
     /* 6️⃣ Response */
