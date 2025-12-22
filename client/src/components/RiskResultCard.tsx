@@ -1,17 +1,23 @@
-import type { VendorCheckResponse } from "../types/vendor";
 import { getRiskUI } from "../utils/ui";
 import AnimatedCount from "./AnimatedCount";
 
-interface VendorCardProps {
-  data: VendorCheckResponse;
+interface RiskResultCardProps {
+  score: number;
+  recommendation: string;
+  flags?: string[];
+  checkedAt?: string;
 }
 
-const VendorCard: React.FC<VendorCardProps> = ({ data }) => {
-  const ui = getRiskUI(data.combinedScore);
+const RiskResultCard: React.FC<RiskResultCardProps> = ({
+  score,
+  recommendation,
+  flags = [],
+  checkedAt,
+}) => {
+  const ui = getRiskUI(score);
 
   return (
-    <div className="mt-6 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300">
-
+    <div className="bg-white rounded-2xl shadow  overflow-hidden">
       {/* HEADER */}
       <div
         className="p-5"
@@ -26,7 +32,7 @@ const VendorCard: React.FC<VendorCardProps> = ({ data }) => {
               className="text-4xl font-bold"
               style={{ color: ui.color }}
             >
-              <AnimatedCount value={data.combinedScore} />%
+                <AnimatedCount value={score} />%
             </p>
           </div>
 
@@ -45,27 +51,18 @@ const VendorCard: React.FC<VendorCardProps> = ({ data }) => {
       {/* BODY */}
       <div className="p-5 space-y-4">
         <div>
-          <p className="text-sm text-slate-500">Vendor Name</p>
-          <p className="font-medium text-slate-700">{data.vendor.name}</p>
-        </div>
-
-        <div>
           <p className="text-sm text-slate-500">Recommendation</p>
-          <p className="font-medium text-slate-700">{data.recommendation}</p>
+          <p className="font-medium">{recommendation}</p>
         </div>
 
-        <div>
-          <p className="text-sm text-slate-500 mb-2">AI Sentiment</p>
-          <p className="text-sm text-slate-700">
-            {data.ai.label} ({data.ai.score}%)
-          </p>
-        </div>
-
-        {data.heuristic.flags.length > 0 && (
+        {flags.length > 0 && (
           <div>
-            <p className="text-sm text-slate-500 mb-2">Red Flags</p>
+            <p className="text-sm text-slate-500 mb-2">
+              Risk Signals Detected
+            </p>
+
             <ul className="space-y-1">
-              {data.heuristic.flags.map((flag, i) => (
+              {flags.map((flag, i) => (
                 <li
                   key={i}
                   className="text-sm bg-slate-100 px-3 py-1 rounded"
@@ -77,9 +74,9 @@ const VendorCard: React.FC<VendorCardProps> = ({ data }) => {
           </div>
         )}
 
-        {data.checkedAt && (
+        {checkedAt && (
           <p className="text-xs text-slate-400">
-            Checked on {new Date(data.checkedAt).toLocaleString()}
+            Checked on {new Date(checkedAt).toLocaleString()}
           </p>
         )}
       </div>
@@ -87,4 +84,4 @@ const VendorCard: React.FC<VendorCardProps> = ({ data }) => {
   );
 };
 
-export default VendorCard;
+export default RiskResultCard;
