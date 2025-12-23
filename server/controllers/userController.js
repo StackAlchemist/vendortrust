@@ -53,7 +53,7 @@ export async function getSearchHistory(req, res) {
 
     const user = await User.findById(userId)
       .select("previousSearches")
-      .populate("previousSearches.vendor", "name instagramHandle");
+      .populate("previousSearches.vendor", "name instagramHandle phoneNumber");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -61,14 +61,34 @@ export async function getSearchHistory(req, res) {
 
     // Sort newest first
     const history = user.previousSearches
-      .sort(
-        (a, b) =>
-          new Date(b.searchedAt) - new Date(a.searchedAt)
-      );
+      .sort((a, b) => new Date(b.searchedAt) - new Date(a.searchedAt))
+      .map((item) => ({
+        id: item._id,
+        searchedAt: item.searchedAt,
+        vendor: {
+          id: item.vendor?._id,
+          name: item.vendor?.name,
+          instagramHandle: item.vendor?.instagramHandle,
+          phoneNumber: item.vendor?.phoneNumber,
+        },
+        combinedScore: item.snapshot.combinedScore,
+        recommendation: item.snapshot.recommendation,
+        heuristic: {
+          score: item.snapshot.heuristic?.score || 0,
+          flags: item.snapshot.heuristic?.flags || [],
+        },
+        ai: {
+          label: item.snapshot.ai?.label || "Unknown",
+          score: item.snapshot.ai?.score || 0,
+        },
+        phoneAnalysis: item.snapshot.phoneAnalysis || null,
+        bankAnalysis: item.snapshot.bankAnalysis || null,
+        conversationText: item.snapshot.conversationText || null,
+      }));
 
     res.json({
       count: history.length,
-      history
+      history,
     });
   } catch (err) {
     console.error("Get history error:", err);

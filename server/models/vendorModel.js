@@ -36,6 +36,19 @@ const vendorSchema = new mongoose.Schema(
       default: 0
     },
 
+    phoneAnalysis: {
+      raw: String,
+      normalized: String,
+      isValidNG: Boolean,
+      score: Number,
+      flags: [String]
+    },
+    
+    flaggedKeywords: [String],
+    
+    lastConversationText: String,
+    
+
     lastCheckedAt: Date,
 
     /* 🔥 NEW */

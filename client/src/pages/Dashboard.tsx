@@ -1,18 +1,55 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
-import RiskBadge from "../components/RiskBadge";
+import VendorCard from "../components/VendorCard";
 import type { SearchHistoryItem } from "../types/user";
 
 const Dashboard: React.FC = () => {
   const [searches, setSearches] = useState<SearchHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Compute confidence and soft reputation
+  const enhanceHistory = (history: SearchHistoryItem[]) => {
+    return history.map(item => {
+      const vendor = item.vendor;
+      const historyData = vendor.analysisHistory || [];
+
+      // Confidence: lower avg score = higher confidence
+      const avgScore =
+        historyData.reduce((acc, a) => acc + a.combinedScore, 0) /
+        Math.max(historyData.length, 1);
+      const confidenceScore = Math.max(0, 100 - avgScore);
+
+      // Soft reputation: reduce score if consistent low risk
+      const recent = historyData.slice(-5);
+      const avgRecent = recent.reduce((a, b) => a + b.combinedScore, 0) / Math.max(recent.length, 1);
+      const softReputation = avgRecent < 40 ? 1 : 0;
+
+      // Aggregate community flags
+      const keywordCount: { [phrase: string]: number } = {};
+      historyData.forEach(a => {
+        a.heuristic.flags.forEach(flag => {
+          const phrase = flag.replace(/Detected phrase: "/, "").replace(/" \(\+\d+\)/, "");
+          keywordCount[phrase] = (keywordCount[phrase] || 0) + 1;
+        });
+      });
+
+      const communityFlags = Object.entries(keywordCount).map(([phrase, count]) => ({ phrase, count }));
+
+      return {
+        ...item,
+        confidenceScore,
+        softReputation,
+        communityFlags
+      };
+    });
+  };
+
   useEffect(() => {
     const fetchSearches = async () => {
       try {
         const res = await api.get("/users/history");
-        setSearches(res.data.history || []);
+        setSearches(enhanceHistory(res.data.history || []));
       } catch (err) {
         console.error("Failed to load searches", err);
       } finally {
@@ -54,21 +91,8 @@ const Dashboard: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.05, duration: 0.4 }}
-                className="bg-white p-6 rounded-2xl shadow-md flex flex-col justify-between"
               >
-                <div className="mb-4">
-                  <p className="font-semibold text-lg">{item.snapshot.name}</p>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {item.snapshot.recommendation}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-2">
-                    {new Date(item.searchedAt).toLocaleString()}
-                  </p>
-                </div>
-
-                <div className="self-end">
-                  <RiskBadge score={item.snapshot.combinedScore} />
-                </div>
+                <VendorCard data={item} />
               </motion.div>
             ))}
           </AnimatePresence>

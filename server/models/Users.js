@@ -12,19 +12,29 @@ const searchSchema = new mongoose.Schema(
         name: String,
         instagramHandle: String,
         phoneNumber: String,
-  
+      
         combinedScore: Number,
         recommendation: String,
-  
+      
         heuristic: {
           score: Number,
           flags: [String]
         },
-  
+      
         ai: {
           label: String,
           score: Number
-        }
+        },
+      
+        phoneAnalysis: {
+          raw: String,
+          isValidNG: Boolean,
+          score: Number,
+          flags: [String]
+        },
+      
+        flaggedKeywords: [String],
+        inputText: String
       },
   
       searchedAt: {

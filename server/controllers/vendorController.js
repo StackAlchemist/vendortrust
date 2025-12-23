@@ -10,35 +10,46 @@ export async function checkVendor(req, res) {
       name,
       instagramHandle,
       phoneNumber,
-      conversationText,
-      userId // optional (logged-in user)
+      conversationText
     } = req.body;
 
-    if (!conversationText) {
-      return res.status(400).json({ message: "conversationText required" });
+    if (!conversationText || conversationText.trim().length < 5) {
+      return res.status(400).json({
+        message: "Vendor conversation text is required"
+      });
     }
 
-    /* 1️⃣ Heuristics */
-    const heuristic = runHeuristics(conversationText);
+    /* -----------------------------
+       1️⃣ Run Heuristic Analysis
+    ------------------------------ */
+    const heuristicResult = runHeuristics(conversationText);
 
-    /* 2️⃣ AI */
-    const ai = await analyzeTextAI(conversationText);
+    /* -----------------------------
+       2️⃣ Run AI Analysis
+    ------------------------------ */
+    const aiResult = await analyzeTextAI(conversationText);
 
-    /* 3️⃣ Combine */
-    const multiplier = getSentimentMultiplier(ai.label);
+    /* -----------------------------
+       3️⃣ Combine Scores
+    ------------------------------ */
+    const multiplier = getSentimentMultiplier(aiResult.label);
     const combinedScore = Math.min(
-      Math.round(heuristic.score * multiplier),
+      Math.round(heuristicResult.score * multiplier),
       100
     );
 
-    const recommendation =
-      combinedScore >= 70
-        ? "High risk – avoid payment"
-        : combinedScore >= 40
-        ? "Medium risk – proceed with caution"
-        : "Low risk – relatively safe";
+    let recommendation;
+    if (combinedScore >= 70) {
+      recommendation = "High risk – avoid payment";
+    } else if (combinedScore >= 40) {
+      recommendation = "Medium risk – proceed with caution";
+    } else {
+      recommendation = "Low risk – relatively safe";
+    }
 
-    /* 4️⃣ Find or create vendor */
+    /* -----------------------------
+       4️⃣ Find or Create Vendor
+    ------------------------------ */
     let vendor = await Vendor.findOne({
       $or: [
         instagramHandle ? { instagramHandle } : null,
@@ -47,8 +58,14 @@ export async function checkVendor(req, res) {
     });
 
     const analysisRecord = {
-      heuristic,
-      ai,
+      heuristic: {
+        score: heuristicResult.score,
+        flags: heuristicResult.flags
+      },
+      ai: {
+        label: aiResult.label,
+        score: aiResult.score
+      },
       combinedScore,
       recommendation
     };
@@ -69,37 +86,68 @@ export async function checkVendor(req, res) {
       await vendor.save();
     }
 
-    /* 5️⃣ Save to user's history (if logged in) */
+    /* -----------------------------
+       5️⃣ Save User Search History
+    ------------------------------ */
     if (req.user) {
-      await User.findByIdAndUpdate(req.user._id, {
-        $push: {
-          previousSearches: {
-            vendor: vendor._id,
-            snapshot: {
-              name: vendor.name,
-              instagramHandle: vendor.instagramHandle,
-              phoneNumber: vendor.phoneNumber,
-              combinedScore,
-              recommendation,
-              heuristic,
-              ai
+      await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          $push: {
+            previousSearches: {
+              vendor: vendor._id,
+
+              snapshot: {
+                name: vendor.name,
+                instagramHandle: vendor.instagramHandle,
+                phoneNumber: vendor.phoneNumber,
+
+                combinedScore,
+                recommendation,
+
+                heuristic: {
+                  score: heuristicResult.score,
+                  flags: heuristicResult.flags
+                },
+
+                ai: {
+                  label: aiResult.label,
+                  score: aiResult.score
+                },
+
+                // 🔥 VERY IMPORTANT
+                vendorText: conversationText
+              }
             }
           }
-        }
-      }, { new: true });
+        },
+        { new: true }
+      );
     }
 
-    /* 6️⃣ Response */
-    return res.json({
-      vendor,
-      heuristic,
-      ai,
-      combinedScore,
-      recommendation
+    /* -----------------------------
+       6️⃣ Response
+    ------------------------------ */
+    return res.status(200).json({
+      vendor: {
+        id: vendor._id,
+        name: vendor.name,
+        instagramHandle: vendor.instagramHandle,
+        phoneNumber: vendor.phoneNumber,
+        riskScore: vendor.riskScore
+      },
+      analysis: {
+        heuristic: heuristicResult,
+        ai: aiResult,
+        combinedScore,
+        recommendation
+      }
     });
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+  } catch (error) {
+    console.error("Check vendor error:", error);
+    return res.status(500).json({
+      message: "Internal server error"
+    });
   }
 }
