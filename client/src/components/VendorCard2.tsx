@@ -1,6 +1,5 @@
 import type { VendorCheckResponse } from "../types/vendor";
 import RiskBadge from "./RiskBadge";
-import AnimatedCount from "./AnimatedCount";
 
 // Props now include confidence and communityFlags
 interface VendorCardProps {

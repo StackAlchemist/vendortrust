@@ -2,7 +2,7 @@ import Vendor from "../models/vendorModel.js";
 import User from "../models/Users.js";
 import { runHeuristics } from "../services/heuristicEngine.js";
 import { analyzeTextAI } from "../services/aiEngine.js";
-import { getSentimentMultiplier } from "../services/aiRiskMapper.js";
+import { getSentimentAdjustment } from "../services/aiRiskMapper.js";
 
 export async function checkVendor(req, res) {
   try {
@@ -20,35 +20,60 @@ export async function checkVendor(req, res) {
     }
 
     /* -----------------------------
-       1️⃣ Run Heuristic Analysis
+       1️⃣ Heuristic Analysis
     ------------------------------ */
     const heuristicResult = runHeuristics(conversationText);
 
     /* -----------------------------
-       2️⃣ Run AI Analysis
+       2️⃣ AI Analysis
     ------------------------------ */
     const aiResult = await analyzeTextAI(conversationText);
 
     /* -----------------------------
-       3️⃣ Combine Scores
+       3️⃣ SMART SCORE CALCULATION
     ------------------------------ */
-    const multiplier = getSentimentMultiplier(aiResult.label);
-    const combinedScore = Math.min(
-      Math.round(heuristicResult.score * multiplier),
-      100
+
+    // Normalize heuristic score (0–100)
+    const heuristicScore = Math.min(heuristicResult.score, 100);
+
+    // Sentiment adjustment
+    const sentimentBoost = getSentimentAdjustment(
+      aiResult.label,
+      aiResult.score
     );
 
+    /**
+     * Core formula
+     * - Heuristics: 65%
+     * - AI confidence: 25%
+     * - Sentiment boost: +small
+     */
+    let combinedScore =
+      heuristicScore * 0.65 +
+      aiResult.score * 0.25 +
+      sentimentBoost;
+
+    // 🧠 Floor protection (prevents 1% nonsense)
+    if (heuristicScore > 0 && combinedScore < 35) {
+      combinedScore = 35;
+    }
+
+    combinedScore = Math.min(Math.round(combinedScore), 100);
+
+    /* -----------------------------
+       4️⃣ Recommendation Engine
+    ------------------------------ */
     let recommendation;
-    if (combinedScore >= 70) {
+    if (combinedScore >= 75) {
       recommendation = "High risk – avoid payment";
-    } else if (combinedScore >= 40) {
+    } else if (combinedScore >= 45) {
       recommendation = "Medium risk – proceed with caution";
     } else {
       recommendation = "Low risk – relatively safe";
     }
 
     /* -----------------------------
-       4️⃣ Find or Create Vendor
+       5️⃣ Find or Create Vendor
     ------------------------------ */
     let vendor = await Vendor.findOne({
       $or: [
@@ -87,46 +112,30 @@ export async function checkVendor(req, res) {
     }
 
     /* -----------------------------
-       5️⃣ Save User Search History
+       6️⃣ Save User Search History
     ------------------------------ */
     if (req.user) {
-      await User.findByIdAndUpdate(
-        req.user._id,
-        {
-          $push: {
-            previousSearches: {
-              vendor: vendor._id,
-
-              snapshot: {
-                name: vendor.name,
-                instagramHandle: vendor.instagramHandle,
-                phoneNumber: vendor.phoneNumber,
-
-                combinedScore,
-                recommendation,
-
-                heuristic: {
-                  score: heuristicResult.score,
-                  flags: heuristicResult.flags
-                },
-
-                ai: {
-                  label: aiResult.label,
-                  score: aiResult.score
-                },
-
-                // 🔥 VERY IMPORTANT
-                vendorText: conversationText
-              }
+      await User.findByIdAndUpdate(req.user._id, {
+        $push: {
+          previousSearches: {
+            vendor: vendor._id,
+            snapshot: {
+              name: vendor.name,
+              instagramHandle: vendor.instagramHandle,
+              phoneNumber: vendor.phoneNumber,
+              combinedScore,
+              recommendation,
+              heuristic: heuristicResult,
+              ai: aiResult,
+              vendorText: conversationText
             }
           }
-        },
-        { new: true }
-      );
+        }
+      });
     }
 
     /* -----------------------------
-       6️⃣ Response
+       7️⃣ Response
     ------------------------------ */
     return res.status(200).json({
       vendor: {

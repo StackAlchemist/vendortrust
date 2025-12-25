@@ -95,3 +95,7 @@ export async function getSearchHistory(req, res) {
     res.status(500).json({ message: "Server error" });
   }
 }
+
+const vote = async(req, res)=>{
+  
+}

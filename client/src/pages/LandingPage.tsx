@@ -14,7 +14,7 @@ const textVariant = {
     transition: {
       delay: i * 0.12,
       duration: 0.6,
-      ease: "easeOut"
+      ease: "easeOut" as any
     }
   })
 };

@@ -3,6 +3,7 @@ import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import cors from 'cors';
+import FlagRoutes from './routes/FlagRoutes.js';
 
 const app = express();
 const PORT = 3000;
@@ -13,6 +14,7 @@ app.use(cors());
 
 app.use("/api/users", userRoutes);
 app.use("/api", vendorRoutes);
+app.use("/api/flags", FlagRoutes)
 
 app.get('/', (req, res) => {
     res.send('Hello World');

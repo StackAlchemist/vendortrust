@@ -77,11 +77,11 @@ const VendorCard: React.FC<VendorCardProps> = ({ data }) => {
           </div>
         )}
 
-        {data.checkedAt && (
+        {/* {data.checkedAt && (
           <p className="text-xs text-slate-400">
             Checked on {new Date(data.checkedAt).toLocaleString()}
           </p>
-        )}
+        )} */}
       </div>
     </div>
   );

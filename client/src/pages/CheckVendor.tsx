@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
-import VendorCard from "../components/VendorCard";
-import type { VendorCheckResponse } from "../types/vendor";
+// import VendorCard from "../components/VendorCard";
+import VendorResultCard from "../components/VendorResultCard";
 import { ShieldCheck, ScanText } from "lucide-react";
 
 interface VendorForm {
@@ -11,6 +11,27 @@ interface VendorForm {
   phoneNumber?: string;
   conversationText?: string;
   userId: string;
+}
+
+interface VendorCheckResponse {
+  vendor: {
+    id: string;
+    name: string;
+    instagramHandle?: string;
+    riskScore: number;
+  };
+  analysis: {
+    heuristic: {
+      score: number;
+      flags: string[];
+    };
+    ai: {
+      label: string;
+      score: number;
+    };
+    combinedScore: number;
+    recommendation: string;
+  };
 }
 
 const CheckVendor: React.FC = () => {
@@ -29,6 +50,7 @@ const CheckVendor: React.FC = () => {
     try {
       const res = await api.post<VendorCheckResponse>("/check-vendor", form);
       setResult(res.data);
+      console.log(res.data);
     } catch {
       alert("Failed to check vendor");
     }
@@ -149,7 +171,7 @@ const CheckVendor: React.FC = () => {
             transition={{ duration: 0.5 }}
             className="max-w-3xl mx-auto mt-20"
           >
-            <VendorCard data={result} />
+            <VendorResultCard data={result} />
           </motion.div>
         )}
       </AnimatePresence>
