@@ -5,6 +5,7 @@ import HowItWorks from "../components/HowItWorks";
 import WhyUseIt from "../components/WhyUseIt";
 import TipsFAQ from "../components/TipsFAQ";
 import Footer from "../components/Footer";
+import { useNavigate } from "react-router-dom";
 
 const textVariant = {
   hidden: { opacity: 0, y: 24 },
@@ -19,7 +20,9 @@ const textVariant = {
   })
 };
 
+
 const LandingPage = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-hidden">
       
@@ -75,10 +78,10 @@ const LandingPage = () => {
               custom={3}
               className="flex flex-col sm:flex-row gap-4 mt-8"
             >
-              <Button>
+              <Button onClick={() => navigate('/check')} >
                 Check a Vendor
               </Button>
-              <Button variant="secondary">
+              <Button variant="secondary" onClick={() => navigate('/login')}>
                 Sign Up Free
               </Button>
             </motion.div>
